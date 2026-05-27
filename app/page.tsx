@@ -10,6 +10,7 @@ interface BeforeInstallPromptEvent extends Event {
 import WeatherCard from '@/components/WeatherCard';
 import YesterdayCard from '@/components/YesterdayCard';
 import OutfitCard from '@/components/OutfitCard';
+import AdBanner from '@/components/AdBanner';
 
 type Gender = 'male' | 'female' | 'other';
 
@@ -385,11 +386,16 @@ export default function HomePage() {
                 />
               )}
             </div>
+
+            {/* ── 의류 광고 배너 ── */}
+            {!outfitLoading && outfit && (
+              <AdBanner />
+            )}
           </>
         )}
 
         {status === 'done' && (
-          <p className="text-center text-xs text-gray-400 pb-4 animate-fade-up" style={{ animationDelay: '320ms' }}>
+          <p className="text-center text-xs text-gray-400 pb-4 animate-fade-up" style={{ animationDelay: '360ms' }}>
             날씨 데이터: OpenWeatherMap · 어제 날씨: Open-Meteo<br />
             옷차림 추천: GPT-4o-mini (OpenAI)
           </p>
