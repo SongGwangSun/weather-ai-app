@@ -40,11 +40,55 @@ body {
   animation: fadeUp 0.4s ease-out both;
 }
 
-/* 카드 호버 */
-.card-hover {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+/* ── PWA / 모바일 Safe Area ─────────────────────────────── */
+:root {
+  --safe-top:    env(safe-area-inset-top,    0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left:   env(safe-area-inset-left,   0px);
+  --safe-right:  env(safe-area-inset-right,  0px);
 }
-.card-hover:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+
+/* 헤더에 노치/다이나믹 아일랜드 여백 */
+.header-safe {
+  padding-top: max(0.75rem, calc(0.75rem + var(--safe-top)));
+}
+
+/* 하단 홈 인디케이터 여백 */
+.pb-safe {
+  padding-bottom: max(1.5rem, calc(1.5rem + var(--safe-bottom)));
+}
+
+/* 터치 피드백 개선 */
+body {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-overflow-scrolling: touch;
+  touch-action: manipulation;
+}
+
+/* 숫자 입력 spin 버튼 숨기기 */
+input[type='number']::-webkit-inner-spin-button,
+input[type='number']::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type='number'] { -moz-appearance: textfield; }
+
+/* 카드 호버 — 데스크톱(마우스)에서만 */
+@media (hover: hover) and (pointer: fine) {
+  .card-hover {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .card-hover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.12);
+  }
+}
+
+/* 슬라이드업 애니메이션 (PWA 배너 등) */
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+.animate-slide-up {
+  animation: slideUp 0.35s cubic-bezier(0.34,1.56,0.64,1) both;
 }

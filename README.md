@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🌤️ 날씨 & AI 옷차림 추천 앱
 
-## Getting Started
+현재 날씨와 어제 날씨를 한눈에 확인하고, GPT-4o-mini가 나이·성별 맞춤 옷차림과 색상까지 추천해드립니다.  
+PWA로 제작되어 홈 화면에 추가하면 앱처럼 사용할 수 있습니다.
 
-First, run the development server:
+## 주요 기능
+
+| | |
+|---|---|
+| 📍 자동 위치 감지 | 브라우저 GPS (거부 시 서울 기본값) |
+| 🌡️ 현재 날씨 | 기온·체감온도·습도·풍속·강수량·UV 지수 |
+| 📅 어제 날씨 | 최고/최저 기온·강수량·풍속·습도 |
+| 📊 어제 대비 비교 | 기온 변화 한눈에 확인 |
+| 👗 AI 옷차림 추천 | GPT-4o-mini — 상의·하의·아우터·신발·색상 |
+| 🎨 맞춤 색상 추천 | 나이·성별별 어울리는 색상 팔레트 |
+| 🕐 프로필 이력 | 최근 입력 5개 저장, 원클릭 재선택 |
+| 📲 PWA | 홈 화면 추가·오프라인 아이콘 지원 |
+
+## 빠른 시작
 
 ```bash
+# 1. 의존성 설치
+npm install
+
+# 2. 환경 변수 설정
+cp .env.example .env.local
+# .env.local 을 열어 API 키 입력
+
+# 3. 개발 서버 실행
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# → http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## 환경 변수
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+`.env.local` 파일에 아래 두 키를 입력하세요:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# OpenAI API 키 (필수) — https://platform.openai.com/api-keys
+OPENAI_API_KEY=sk-...
 
-## Learn More
+# OpenWeatherMap API 키 (필수) — https://home.openweathermap.org/api_keys
+OPENWEATHER_API_KEY=your_key_here
+```
 
-To learn more about Next.js, take a look at the following resources:
+> OpenWeatherMap 무료 플랜으로 충분합니다. 어제 날씨는 Open-Meteo (무료)로 자동 폴백합니다.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Vercel 배포
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. [Vercel](https://vercel.com)에 GitHub 리포지토리 연결
+2. **Settings → Environment Variables**에서 위 두 키 추가
+3. 배포 완료 🚀
 
-## Deploy on Vercel
+또는 CLI로 배포:
+```bash
+npx vercel --prod
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 아이콘 재생성 (선택)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+`public/icons/icon.svg`를 수정한 뒤 PNG 재생성:
+```bash
+node scripts/gen-icons.mjs
+```
+
+## 기술 스택
+
+| 분류 | 라이브러리/서비스 |
+|---|---|
+| 프레임워크 | Next.js 16 (App Router, TypeScript) |
+| 스타일 | Tailwind CSS v4 |
+| 현재 날씨 | OpenWeatherMap API v2.5 |
+| 어제 날씨 | OpenWeatherMap Timemachine → Open-Meteo 폴백 |
+| AI 추천 | OpenAI GPT-4o-mini |
+| PWA | Web App Manifest + Apple Touch Icon |
