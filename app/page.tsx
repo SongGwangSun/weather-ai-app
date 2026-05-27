@@ -22,11 +22,14 @@ interface SavedProfile {
   id: string;
   gender: Gender | null;
   age: number | null;
-  usedAt: number; // timestamp
+  usedAt: number;        // 마지막 사용 시각
+  cachedOutfit?: OutfitState; // 1시간 캐시
+  cachedAt?: number;          // 캐시 저장 시각
 }
 
 const HISTORY_KEY = 'weather-outfit-history';
 const MAX_HISTORY = 5;
+const ONE_HOUR    = 3600 * 1000;
 
 function loadHistory(): SavedProfile[] {
   try {
@@ -37,14 +40,36 @@ function loadHistory(): SavedProfile[] {
 function saveToHistory(profile: UserProfile): SavedProfile[] {
   if (!profile.gender && !profile.age) return loadHistory();
   const existing = loadHistory();
-  // 동일한 gender+age 항목 제거 후 맨 앞에 추가
+  // 동일한 gender+age 항목의 캐시를 계승하면서 맨 앞으로 이동
+  const prev = existing.find(
+    (p) => p.gender === profile.gender && p.age === profile.age
+  );
   const deduped = existing.filter(
     (p) => !(p.gender === profile.gender && p.age === profile.age)
   );
   const next: SavedProfile[] = [
-    { id: Date.now().toString(), gender: profile.gender, age: profile.age, usedAt: Date.now() },
+    {
+      id: prev?.id ?? Date.now().toString(),
+      gender: profile.gender,
+      age: profile.age,
+      usedAt: Date.now(),
+      cachedOutfit: prev?.cachedOutfit,
+      cachedAt: prev?.cachedAt,
+    },
     ...deduped,
   ].slice(0, MAX_HISTORY);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
+  return next;
+}
+
+/** 추천 결과를 해당 프로필의 캐시로 저장 */
+function cacheOutfitToHistory(profile: UserProfile, outfit: OutfitState): SavedProfile[] {
+  const existing = loadHistory();
+  const next = existing.map((p) =>
+    p.gender === profile.gender && p.age === profile.age
+      ? { ...p, cachedOutfit: outfit, cachedAt: Date.now() }
+      : p
+  );
   localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
   return next;
 }
@@ -53,6 +78,15 @@ function deleteFromHistory(id: string): SavedProfile[] {
   const next = loadHistory().filter((p) => p.id !== id);
   localStorage.setItem(HISTORY_KEY, JSON.stringify(next));
   return next;
+}
+
+/** 캐시가 1시간 이내에 유효한지 확인 */
+function isCacheValid(saved: SavedProfile): boolean {
+  return !!(
+    saved.cachedOutfit &&
+    saved.cachedAt &&
+    Date.now() - saved.cachedAt < ONE_HOUR
+  );
 }
 
 interface WeatherState {
@@ -133,7 +167,7 @@ export default function HomePage() {
   // localStorage는 클라이언트에서만 읽기
   useEffect(() => { setHistory(loadHistory()); }, []);
 
-  // 옷차림만 다시 요청
+  // 옷차림만 다시 요청 (완료 후 localStorage에 캐싱)
   const fetchOutfit = useCallback(async (w: WeatherState, p: UserProfile) => {
     setOutfitLoading(true);
     setOutfit(null);
@@ -148,7 +182,12 @@ export default function HomePage() {
           gender:   p.gender,
         }),
       });
-      if (res.ok) setOutfit(await res.json());
+      if (res.ok) {
+        const result: OutfitState = await res.json();
+        setOutfit(result);
+        // 결과를 히스토리에 캐싱 (1시간 유효)
+        setHistory(cacheOutfitToHistory(p, result));
+      }
     } finally {
       setOutfitLoading(false);
     }
@@ -206,10 +245,27 @@ export default function HomePage() {
     applyProfile({ ...profile, age: newAge });
   };
 
-  // 이력에서 선택
+  // 이력에서 선택 — 1시간 이내 캐시가 있으면 API 호출 없이 즉시 표시
   const handleSelectHistory = (saved: SavedProfile) => {
     setAgeInput(saved.age?.toString() ?? '');
-    applyProfile({ gender: saved.gender, age: saved.age });
+    const p: UserProfile = { gender: saved.gender, age: saved.age };
+    setProfile(p);
+
+    if (isCacheValid(saved)) {
+      // ✅ 캐시 히트: 즉시 표시
+      setOutfit(saved.cachedOutfit!);
+      // usedAt만 갱신해서 맨 앞으로 올리기
+      const existing = loadHistory();
+      const reordered: SavedProfile[] = [
+        { ...saved, usedAt: Date.now() },
+        ...existing.filter((x) => x.id !== saved.id),
+      ];
+      localStorage.setItem(HISTORY_KEY, JSON.stringify(reordered));
+      setHistory(reordered);
+    } else {
+      // 캐시 없거나 만료 → 새로 요청
+      applyProfile(p);
+    }
   };
 
   // 이력 삭제
@@ -433,7 +489,8 @@ function ProfileCard({
             <p className="text-xs font-semibold text-gray-400 mb-2">🕐 최근 입력 이력</p>
             <ul className="space-y-2">
               {history.map((h) => {
-                const active = isActive(h);
+                const active  = isActive(h);
+                const cached  = isCacheValid(h);
                 return (
                   <li key={h.id} className="flex items-center gap-2">
                     <button
@@ -449,16 +506,28 @@ function ProfileCard({
                         <p className={`text-sm font-semibold ${active ? 'text-indigo-700' : 'text-gray-700'}`}>
                           {profileLabel(h)}
                         </p>
-                        <p className="text-xs text-gray-400">{timeAgo(h.usedAt)}</p>
+                        <p className="text-xs text-gray-400">
+                          {cached
+                            ? `⚡ ${timeAgo(h.cachedAt!)} 추천 저장됨`
+                            : timeAgo(h.usedAt)}
+                        </p>
                       </div>
-                      {active && (
-                        <span className="text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full font-semibold shrink-0">
-                          현재
-                        </span>
-                      )}
-                      {outfitLoading && active && (
-                        <span className="text-xs text-indigo-400 shrink-0">⏳</span>
-                      )}
+                      {/* 뱃지 영역 */}
+                      <div className="flex items-center gap-1 shrink-0">
+                        {cached && !active && (
+                          <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-semibold">
+                            바로보기
+                          </span>
+                        )}
+                        {active && (
+                          <span className="text-xs bg-indigo-500 text-white px-2 py-0.5 rounded-full font-semibold">
+                            현재
+                          </span>
+                        )}
+                        {outfitLoading && active && (
+                          <span className="text-xs text-indigo-400">⏳</span>
+                        )}
+                      </div>
                     </button>
                     {/* 삭제 버튼 */}
                     <button
