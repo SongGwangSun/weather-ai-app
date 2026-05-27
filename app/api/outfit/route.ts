@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import OpenAI from 'openai';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
+import { PLAN_LIMITS } from '@/lib/plans';
+
+function todayDate(): string {
+  return new Date().toISOString().split('T')[0];
+}
 
 // 나이대 텍스트
 function ageGroup(age: number | null): string {
@@ -36,6 +44,36 @@ const JSON_SCHEMA = `{
 
 export async function POST(request: NextRequest) {
   const body = await request.json();
+
+  // ── 인증 확인 ──────────────────────────────────────────────────────────────
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: 'UNAUTHORIZED' }, { status: 401 });
+  }
+
+  // ── 사용량 확인 및 제한 ─────────────────────────────────────────────────────
+  const plan  = session.user.plan ?? 'free';
+  const limit = PLAN_LIMITS[plan].dailyRecommendations;
+  let currentCount = 0;
+
+  if (supabase && limit !== Infinity) {
+    const date = todayDate();
+    const { data: usageRow } = await supabase
+      .from('daily_usage')
+      .select('count')
+      .eq('email', session.user.email)
+      .eq('date', date)
+      .maybeSingle();
+
+    currentCount = usageRow?.count ?? 0;
+
+    if (currentCount >= limit) {
+      return NextResponse.json(
+        { error: 'LIMIT_REACHED', used: currentCount, limit, plan },
+        { status: 403 }
+      );
+    }
+  }
 
   if (!process.env.OPENAI_API_KEY) {
     return ruleBasedRecommendation(body);
@@ -75,10 +113,28 @@ ${JSON_SCHEMA}`;
 
     const text = response.choices[0].message.content ?? '{}';
     const recommendation = JSON.parse(text);
-    return NextResponse.json({ recommendation, source: 'ai' });
+
+    // ── 사용량 증가 ───────────────────────────────────────────────────────────
+    if (supabase && limit !== Infinity) {
+      const date = todayDate();
+      await supabase.from('daily_usage').upsert(
+        { email: session.user.email, date, count: currentCount + 1 },
+        { onConflict: 'email,date' }
+      );
+    }
+
+    return NextResponse.json({
+      recommendation,
+      source: 'ai',
+      usage: {
+        used:  currentCount + 1,
+        limit: limit === Infinity ? null : limit,
+        plan,
+      },
+    });
   } catch (err) {
     console.error('OpenAI 추천 오류:', err);
-    return ruleBasedRecommendation(body);
+    return ruleBasedRecommendation(body, session.user.email, currentCount, limit, plan);
   }
 }
 
@@ -101,7 +157,14 @@ function getColorPalette(gender: string | null, age: number | null) {
   }
 }
 
-function ruleBasedRecommendation(body: Record<string, unknown>) {
+function ruleBasedRecommendation(
+  body: Record<string, unknown>,
+  email?: string,
+  currentCount = 0,
+  limit: number = Infinity,
+  plan = 'free',
+) {
+  void email; // 폴백에서는 사용량 증가 생략 (OpenAI 오류 상황)
   try {
     const current = body.current as Record<string, unknown>;
     const age    = typeof body.age    === 'number' ? body.age    : null;
@@ -186,6 +249,11 @@ function ruleBasedRecommendation(body: Record<string, unknown>) {
     return NextResponse.json({
       recommendation: { summary, top, topColors, bottom, bottomColors, outer, outerColors, shoes, shoeColors, colorStory, accessories, tips, warning: null },
       source: 'rule',
+      usage: {
+        used:  currentCount + 1,
+        limit: limit === Infinity ? null : limit,
+        plan,
+      },
     });
   } catch {
     return NextResponse.json({ error: '추천을 가져오는데 실패했습니다' }, { status: 500 });
