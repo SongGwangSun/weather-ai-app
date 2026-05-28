@@ -179,14 +179,20 @@ export default function HomePage() {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
-  // 로그인 시 사용량 조회
+  // 로그인 시 사용량 조회 + 날씨가 이미 로드된 상태면 자동으로 추천 요청
   useEffect(() => {
     if (!session?.user) { setUsage(null); return; }
     fetch('/api/usage')
       .then((r) => r.json())
       .then((d) => setUsage({ used: d.used, limit: d.limit }))
       .catch(() => {});
-  }, [session]);
+
+    // 날씨는 있는데 추천이 없으면 자동 요청
+    if (weatherRef.current && !outfit && !outfitLoading) {
+      fetchOutfit(weatherRef.current, profile);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user?.email]);
 
   // plan에 따른 최대 프로필 수
   const maxProfiles = session?.user?.plan === 'paid'
@@ -416,7 +422,7 @@ export default function HomePage() {
                       </button>
                     )}
                     <button
-                      onClick={() => { signOut(); setShowUserMenu(false); }}
+                      onClick={() => { signOut({ callbackUrl: '/' }); setShowUserMenu(false); }}
                       className="w-full text-left px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
                     >
                       로그아웃
@@ -494,8 +500,15 @@ export default function HomePage() {
 
             {/* ── 옷차림 추천 ── */}
             <div className="animate-fade-up" style={{ animationDelay: '270ms' }}>
-              {!session?.user ? (
-                /* 비로그인: 로그인 유도 카드 */
+              {authStatus === 'loading' ? (
+                /* 세션 확인 중: 스켈레톤 */
+                <div className="rounded-3xl bg-white shadow-lg p-6 animate-pulse">
+                  <div className="h-4 bg-gray-100 rounded w-1/3 mb-4" />
+                  <div className="h-3 bg-gray-100 rounded w-2/3 mb-2" />
+                  <div className="h-3 bg-gray-100 rounded w-1/2" />
+                </div>
+              ) : !session?.user ? (
+                /* 비로그인 확정: 로그인 유도 카드 */
                 <button
                   onClick={() => setShowLoginModal(true)}
                   className="w-full rounded-3xl bg-gradient-to-br from-indigo-500 to-purple-600 p-6 text-center shadow-lg hover:opacity-95 transition-opacity"
