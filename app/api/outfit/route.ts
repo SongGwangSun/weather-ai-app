@@ -5,6 +5,8 @@ import { authOptions } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { PLAN_LIMITS } from '@/lib/plans';
 
+export const runtime = 'nodejs';
+
 function todayDate(): string {
   return new Date().toISOString().split('T')[0];
 }
