@@ -3,288 +3,466 @@
 import { getBMI, getBodyType } from '@/lib/profile';
 import type { Gender, UserProfile } from '@/lib/profile';
 
-// ── 한국어 색상명 → CSS hex ───────────────────────────────────────────────────
+/* ── 색상 매핑 ─────────────────────────────────────────────────────────────── */
 const COLOR_MAP: Record<string, string> = {
-  흰색: '#F8F8F8', 화이트: '#F8F8F8', 크림색: '#FFF5E4', 아이보리: '#FFFFF0',
-  연베이지: '#F5E6CC', 베이지: '#E8D5B7', 카멜: '#C19A6B', 브라운: '#8B4513',
-  블랙: '#2C2C2E', 검정: '#2C2C2E', 차콜: '#36454F', 다크그레이: '#555',
-  그레이: '#9CA3AF', 연그레이: '#D1D5DB', 슬레이트그레이: '#708090',
-  네이비: '#1e3a5f', 다크네이비: '#0d2137', 블루: '#3B82F6',
-  하늘색: '#87CEEB', 블루데님: '#4682B4', 카고베이지: '#C4A882',
-  카키: '#6B8E23', 올리브: '#808000', 버건디: '#800020', 와인: '#722F37',
-  딥로즈: '#C5485B', 테라코타: '#C86558', 코랄: '#FF6B6B',
-  핑크: '#FFB6C1', 베이비핑크: '#FFD1DC', 라벤더: '#B57BDB', 민트: '#3EB489',
-  누드: '#E8C4A0', 인디고: '#4B0082', 레드: '#DC143C',
+  흰색:'#F5F5F5', 화이트:'#F5F5F5', 크림색:'#FFF0D6', 아이보리:'#FAFAE8',
+  연베이지:'#F0DFC0', 베이지:'#DEC89A', 카멜:'#C09060', 브라운:'#7A3B10',
+  블랙:'#1A1A1F', 검정:'#1A1A1F', 차콜:'#2E3D4A', 다크그레이:'#444C55',
+  그레이:'#8A95A0', 연그레이:'#C8D0D8', 슬레이트그레이:'#5E7080',
+  네이비:'#132D52', 다크네이비:'#091C33', 블루:'#2563EB',
+  하늘색:'#60B8E0', 블루데님:'#3A6EA5', 카고베이지:'#B89D72',
+  카키:'#5C7A28', 올리브:'#6B7030', 버건디:'#6E0F20', 와인:'#5C2233',
+  딥로즈:'#B03050', 테라코타:'#B84840', 코랄:'#E85050',
+  핑크:'#F0A0B8', 베이비핑크:'#F8C8D8', 라벤더:'#9060C8', 민트:'#28A878',
+  누드:'#DCA882', 인디고:'#3D0E7A', 레드:'#CC1030',
+  연초록:'#70C870', 그린:'#1A6E1A', 차분한블루:'#4A6EA0',
 };
 
 function hex(name: string): string {
   const k = name.replace(/\s/g, '');
-  return COLOR_MAP[k] ?? COLOR_MAP[name] ?? '#CBD5E1';
+  return COLOR_MAP[k] ?? COLOR_MAP[name] ?? '#8A95A0';
 }
 
-// ── 체형에 따른 몸통 너비 ────────────────────────────────────────────────────
-function bodyWidths(bodyType: 'slim' | 'normal' | 'full') {
-  if (bodyType === 'slim')   return { shoulder: 54, waist: 46, hip: 50 };
-  if (bodyType === 'full')   return { shoulder: 72, waist: 68, hip: 74 };
-  return                           { shoulder: 62, waist: 54, hip: 60 };
+/** 색상을 밝게 */
+function lighten(color: string, amt = 40): string {
+  const r = Math.min(255, parseInt(color.slice(1,3),16) + amt);
+  const g = Math.min(255, parseInt(color.slice(3,5),16) + amt);
+  const b = Math.min(255, parseInt(color.slice(5,7),16) + amt);
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
+}
+/** 색상을 어둡게 */
+function darken(color: string, amt = 40): string {
+  const r = Math.max(0, parseInt(color.slice(1,3),16) - amt);
+  const g = Math.max(0, parseInt(color.slice(3,5),16) - amt);
+  const b = Math.max(0, parseInt(color.slice(5,7),16) - amt);
+  return `#${r.toString(16).padStart(2,'0')}${g.toString(16).padStart(2,'0')}${b.toString(16).padStart(2,'0')}`;
 }
 
-// ── 헤어 스타일 ──────────────────────────────────────────────────────────────
-function Hair({ gender, skinColor }: { gender: Gender; skinColor: string }) {
-  if (gender === 'female') {
-    return (
-      <g>
-        {/* 긴 머리 */}
-        <ellipse cx="100" cy="52" rx="42" ry="38" fill="#3D2314" />
-        {/* 앞머리 */}
-        <path d="M60 55 Q80 38 100 36 Q120 38 140 55" fill="#3D2314" />
-        {/* 양 옆 긴 머리 */}
-        <rect x="58" y="60" width="14" height="55" rx="7" fill="#3D2314" />
-        <rect x="128" y="60" width="14" height="55" rx="7" fill="#3D2314" />
-        {/* 얼굴 영역 */}
-        <ellipse cx="100" cy="65" rx="36" ry="38" fill={skinColor} />
-      </g>
-    );
-  }
-  if (gender === 'male') {
-    return (
-      <g>
-        {/* 짧은 머리 */}
-        <ellipse cx="100" cy="52" rx="40" ry="32" fill="#2C1810" />
-        {/* 얼굴 영역 */}
-        <ellipse cx="100" cy="66" rx="36" ry="38" fill={skinColor} />
-        {/* 짧은 앞머리 */}
-        <path d="M64 52 Q82 36 100 34 Q118 36 136 52 Q118 50 100 50 Q82 50 64 52Z" fill="#2C1810" />
-      </g>
-    );
-  }
-  // other: 중간 길이
+/* ── 체형 ── */
+function bodyWidths(type: 'slim'|'normal'|'full') {
+  if (type==='slim') return { sh:50, wa:42, hi:46, armW:10 };
+  if (type==='full') return { sh:68, wa:64, hi:70, armW:14 };
+  return                    { sh:58, wa:50, hi:56, armW:12 };
+}
+
+/* ── 한국인 스타일 얼굴 ─────────────────────────────────────────────────────── */
+function KoreanFace({ gender, cx, headY }: { gender: Gender; cx: number; headY: number }) {
+  const skinLight  = '#FDE8CA';
+  const skinBase   = '#FADA9E';  // 밝은 황금빛 피부
+  const skinShadow = '#E8C080';
+  const hairColor  = gender === 'female' ? '#1A0E08' : '#140C06';
+  const hairHighlight = '#3D2010';
+
+  // 얼굴 중심
+  const fy = headY;
+
   return (
     <g>
-      <ellipse cx="100" cy="52" rx="41" ry="34" fill="#4A3728" />
-      <ellipse cx="100" cy="66" rx="36" ry="38" fill={skinColor} />
-      <rect x="60" y="62" width="12" height="38" rx="6" fill="#4A3728" />
-      <rect x="128" y="62" width="12" height="38" rx="6" fill="#4A3728" />
-    </g>
-  );
-}
+      {/* ── 머리카락 (뒤쪽 레이어) ── */}
+      {gender === 'female' ? (
+        <g>
+          {/* 긴 머리 뒤 */}
+          <ellipse cx={cx} cy={fy-2} rx={43} ry={46} fill={hairColor} />
+          {/* 양쪽 긴 머리 */}
+          <rect x={cx-48} y={fy+22} width={18} height={68} rx={9} fill={hairColor} />
+          <rect x={cx+30} y={fy+22} width={18} height={68} rx={9} fill={hairColor} />
+          {/* 머리카락 하이라이트 */}
+          <ellipse cx={cx-8} cy={fy-28} rx={12} ry={6} fill={hairHighlight} opacity={0.5} />
+        </g>
+      ) : (
+        <g>
+          <ellipse cx={cx} cy={fy-4} rx={42} ry={38} fill={hairColor} />
+          {/* 남자 머리 하이라이트 */}
+          <ellipse cx={cx-6} cy={fy-26} rx={10} ry={5} fill={hairHighlight} opacity={0.45} />
+        </g>
+      )}
 
-// ── 얼굴 표정 ────────────────────────────────────────────────────────────────
-function Face({ gender }: { gender: Gender }) {
-  return (
-    <g>
-      {/* 눈 */}
-      <ellipse cx="88"  cy="65" rx="4.5" ry="5.5" fill="#1C1C1E" />
-      <ellipse cx="112" cy="65" rx="4.5" ry="5.5" fill="#1C1C1E" />
-      {/* 눈 광택 */}
-      <circle cx="90"  cy="63" r="1.5" fill="white" />
-      <circle cx="114" cy="63" r="1.5" fill="white" />
-      {/* 콧구멍 */}
-      <ellipse cx="97"  cy="76" rx="2" ry="1.5" fill="#C68642" opacity="0.5" />
-      <ellipse cx="103" cy="76" rx="2" ry="1.5" fill="#C68642" opacity="0.5" />
-      {/* 입 */}
-      <path d="M90 84 Q100 90 110 84" stroke="#C46B6B" strokeWidth="2.5" fill="none" strokeLinecap="round" />
-      {/* 볼터치 */}
-      {gender === 'female' && (
+      {/* ── 목 ── */}
+      <defs>
+        <linearGradient id="neckGrad" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%" stopColor={skinShadow} />
+          <stop offset="35%" stopColor={skinBase} />
+          <stop offset="65%" stopColor={skinBase} />
+          <stop offset="100%" stopColor={skinShadow} />
+        </linearGradient>
+      </defs>
+      <rect x={cx-11} y={fy+44} width={22} height={24} rx={5} fill="url(#neckGrad)" />
+
+      {/* ── 얼굴 본체 (계란형, 3D 입체감) ── */}
+      <defs>
+        <radialGradient id="faceGrad" cx="42%" cy="38%" r="58%">
+          <stop offset="0%"   stopColor={skinLight} />
+          <stop offset="55%"  stopColor={skinBase} />
+          <stop offset="100%" stopColor={skinShadow} />
+        </radialGradient>
+        {/* 얼굴 클립 */}
+        <clipPath id="faceClip">
+          <ellipse cx={cx} cy={fy} rx={37} ry={44} />
+        </clipPath>
+      </defs>
+
+      {/* 얼굴 베이스 */}
+      <ellipse cx={cx} cy={fy} rx={37} ry={44} fill="url(#faceGrad)" />
+
+      {/* 측면 음영 */}
+      <ellipse cx={cx-33} cy={fy+4} rx={10} ry={28} fill={skinShadow} opacity={0.28} />
+      <ellipse cx={cx+33} cy={fy+4} rx={10} ry={28} fill={skinShadow} opacity={0.28} />
+
+      {/* 이마 하이라이트 */}
+      <ellipse cx={cx} cy={fy-22} rx={18} ry={10} fill={skinLight} opacity={0.6} />
+
+      {/* ── 눈썹 (자연스러운 곡선) ── */}
+      {gender === 'female' ? (
         <>
-          <ellipse cx="80"  cy="78" rx="8" ry="5" fill="#FFB6C1" opacity="0.35" />
-          <ellipse cx="120" cy="78" rx="8" ry="5" fill="#FFB6C1" opacity="0.35" />
+          <path d={`M${cx-22},${fy-14} Q${cx-12},${fy-20} ${cx-3},${fy-15}`}
+            stroke="#3A2010" strokeWidth="2.2" fill="none" strokeLinecap="round" />
+          <path d={`M${cx+3},${fy-15} Q${cx+12},${fy-20} ${cx+22},${fy-14}`}
+            stroke="#3A2010" strokeWidth="2.2" fill="none" strokeLinecap="round" />
         </>
+      ) : (
+        <>
+          <path d={`M${cx-24},${fy-13} Q${cx-12},${fy-19} ${cx-2},${fy-14}`}
+            stroke="#1E1208" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+          <path d={`M${cx+2},${fy-14} Q${cx+12},${fy-19} ${cx+24},${fy-13}`}
+            stroke="#1E1208" strokeWidth="2.8" fill="none" strokeLinecap="round" />
+        </>
+      )}
+
+      {/* ── 눈 (아몬드형, 쌍꺼풀) ── */}
+      <g clipPath="url(#faceClip)">
+        {/* 왼쪽 눈 */}
+        <g>
+          {/* 눈꺼풀 */}
+          <path d={`M${cx-24},${fy-4} Q${cx-14},${fy-12} ${cx-4},${fy-4} Q${cx-14},${fy-1} ${cx-24},${fy-4}Z`}
+            fill="#1A1008" />
+          {/* 흰자 */}
+          <path d={`M${cx-23},${fy-4} Q${cx-14},${fy-10} ${cx-5},${fy-4} Q${cx-14},${fy} ${cx-23},${fy-4}Z`}
+            fill="white" />
+          {/* 홍채 */}
+          <circle cx={cx-14} cy={fy-5} r={4.5} fill="#3D2810" />
+          <circle cx={cx-14} cy={fy-5} r={3}   fill="#1A0C06" />
+          {/* 광택 */}
+          <circle cx={cx-12} cy={fy-7} r={1.4} fill="white" />
+          <circle cx={cx-16} cy={fy-4} r={0.7} fill="white" opacity={0.7} />
+          {/* 쌍꺼풀 선 */}
+          <path d={`M${cx-23},${fy-6} Q${cx-14},${fy-14} ${cx-5},${fy-6}`}
+            stroke="#C88858" strokeWidth="0.8" fill="none" opacity={0.5} />
+          {/* 속눈썹 */}
+          {gender === 'female' && (
+            <path d={`M${cx-23},${fy-4} Q${cx-14},${fy-13} ${cx-5},${fy-4}`}
+              stroke="#1A0C06" strokeWidth="1.2" fill="none" />
+          )}
+        </g>
+
+        {/* 오른쪽 눈 */}
+        <g>
+          <path d={`M${cx+4},${fy-4} Q${cx+14},${fy-12} ${cx+24},${fy-4} Q${cx+14},${fy-1} ${cx+4},${fy-4}Z`}
+            fill="#1A1008" />
+          <path d={`M${cx+5},${fy-4} Q${cx+14},${fy-10} ${cx+23},${fy-4} Q${cx+14},${fy} ${cx+5},${fy-4}Z`}
+            fill="white" />
+          <circle cx={cx+14} cy={fy-5} r={4.5} fill="#3D2810" />
+          <circle cx={cx+14} cy={fy-5} r={3}   fill="#1A0C06" />
+          <circle cx={cx+16} cy={fy-7} r={1.4} fill="white" />
+          <circle cx={cx+12} cy={fy-4} r={0.7} fill="white" opacity={0.7} />
+          <path d={`M${cx+5},${fy-6} Q${cx+14},${fy-14} ${cx+23},${fy-6}`}
+            stroke="#C88858" strokeWidth="0.8" fill="none" opacity={0.5} />
+          {gender === 'female' && (
+            <path d={`M${cx+5},${fy-4} Q${cx+14},${fy-13} ${cx+23},${fy-4}`}
+              stroke="#1A0C06" strokeWidth="1.2" fill="none" />
+          )}
+        </g>
+
+        {/* ── 콧날/콧구멍 (오뚝한 코) ── */}
+        {/* 콧날 */}
+        <path d={`M${cx},${fy-2} L${cx-3},${fy+12} Q${cx},${fy+14} ${cx+3},${fy+12} L${cx},${fy-2}`}
+          fill={skinShadow} opacity={0.18} />
+        {/* 콧날 하이라이트 */}
+        <line x1={cx} y1={fy-2} x2={cx} y2={fy+12}
+          stroke={skinLight} strokeWidth="1.2" opacity={0.5} />
+        {/* 콧구멍 */}
+        <ellipse cx={cx-5}  cy={fy+13} rx={3.5} ry={2.2} fill={skinShadow} opacity={0.55} />
+        <ellipse cx={cx+5}  cy={fy+13} rx={3.5} ry={2.2} fill={skinShadow} opacity={0.55} />
+
+        {/* ── 입술 (도톰한 한국풍) ── */}
+        {gender === 'female' ? (
+          <g>
+            {/* 윗입술 */}
+            <path d={`M${cx-11},${fy+22} Q${cx-5},${fy+18} ${cx},${fy+19} Q${cx+5},${fy+18} ${cx+11},${fy+22}`}
+              fill="#D06070" />
+            {/* 아랫입술 */}
+            <path d={`M${cx-11},${fy+22} Q${cx},${fy+30} ${cx+11},${fy+22}`}
+              fill="#E07888" />
+            {/* 입술 하이라이트 */}
+            <ellipse cx={cx} cy={fy+24} rx={5} ry={2} fill="white" opacity={0.25} />
+          </g>
+        ) : (
+          <g>
+            <path d={`M${cx-10},${fy+22} Q${cx-4},${fy+19} ${cx},${fy+20} Q${cx+4},${fy+19} ${cx+10},${fy+22}`}
+              fill="#B05050" opacity={0.8} />
+            <path d={`M${cx-10},${fy+22} Q${cx},${fy+28} ${cx+10},${fy+22}`}
+              fill="#C06060" opacity={0.8} />
+          </g>
+        )}
+
+        {/* ── 볼터치 ── */}
+        {gender === 'female' && (
+          <>
+            <ellipse cx={cx-24} cy={fy+8} rx={9} ry={6} fill="#FFB0A8" opacity={0.3} />
+            <ellipse cx={cx+24} cy={fy+8} rx={9} ry={6} fill="#FFB0A8" opacity={0.3} />
+          </>
+        )}
+
+        {/* ── 턱 하이라이트 ── */}
+        <ellipse cx={cx} cy={fy+36} rx={8} ry={4} fill={skinLight} opacity={0.35} />
+      </g>
+
+      {/* ── 머리카락 앞쪽 ── */}
+      {gender === 'female' ? (
+        <g>
+          {/* 가르마 + 앞머리 */}
+          <path d={`M${cx-40},${fy-28} Q${cx-20},${fy-50} ${cx},${fy-46} Q${cx+20},${fy-50} ${cx+40},${fy-28}`}
+            fill={hairColor} />
+          {/* 앞머리 곡선 */}
+          <path d={`M${cx-38},${fy-30} Q${cx-10},${fy-44} ${cx+12},${fy-40} Q${cx+28},${fy-36} ${cx+38},${fy-28}`}
+            fill={hairColor} opacity={0.85} />
+        </g>
+      ) : (
+        <g>
+          <path d={`M${cx-40},${fy-22} Q${cx-20},${fy-44} ${cx},${fy-44} Q${cx+20},${fy-44} ${cx+40},${fy-22}`}
+            fill={hairColor} />
+          {/* 남자 옆머리 */}
+          <path d={`M${cx-38},${fy-22} Q${cx-42},${fy-2} ${cx-40},${fy+14}`}
+            fill={hairColor} />
+          <path d={`M${cx+38},${fy-22} Q${cx+42},${fy-2} ${cx+40},${fy+14}`}
+            fill={hairColor} />
+        </g>
       )}
     </g>
   );
 }
 
-interface OutfitColors {
-  top: string;
-  bottom: string;
-  outer: string | null;  // null = 겉옷 불필요
-  shoes: string;
+/* ── 3D 의류 그리기 헬퍼 ─────────────────────────────────────────────────── */
+function ClothingGrad({ id, baseColor }: { id: string; baseColor: string }) {
+  return (
+    <linearGradient id={id} x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stopColor={darken(baseColor, 35)} />
+      <stop offset="20%"  stopColor={baseColor} />
+      <stop offset="50%"  stopColor={lighten(baseColor, 25)} />
+      <stop offset="80%"  stopColor={baseColor} />
+      <stop offset="100%" stopColor={darken(baseColor, 35)} />
+    </linearGradient>
+  );
+}
+function LegGrad({ id, baseColor, side }: { id: string; baseColor: string; side: 'left'|'right' }) {
+  const from = side === 'left' ? darken(baseColor,30) : lighten(baseColor,20);
+  const to   = side === 'left' ? lighten(baseColor,20) : darken(baseColor,30);
+  return (
+    <linearGradient id={id} x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%"   stopColor={from} />
+      <stop offset="50%"  stopColor={baseColor} />
+      <stop offset="100%" stopColor={to} />
+    </linearGradient>
+  );
 }
 
-function parseOutfitColors(rec: {
-  topColors?: string[];
-  bottomColors?: string[];
-  outerColors?: string[];
-  shoeColors?: string[];
-  outer?: string;
-}): OutfitColors {
-  return {
-    top:    hex(rec.topColors?.[0]    ?? '연그레이'),
-    bottom: hex(rec.bottomColors?.[0] ?? '블루데님'),
-    outer:  rec.outer?.includes('불필요') ? null : hex(rec.outerColors?.[0] ?? '차콜'),
-    shoes:  hex(rec.shoeColors?.[0]   ?? '블랙'),
-  };
+/* ── 메인 아바타 ─────────────────────────────────────────────────────────── */
+interface Rec {
+  top: string; topColors?: string[];
+  bottom: string; bottomColors?: string[];
+  outer: string; outerColors?: string[];
+  shoes: string; shoeColors?: string[];
 }
-
-// ── 메인 아바타 컴포넌트 ─────────────────────────────────────────────────────
 interface AvatarProps {
   profile: UserProfile;
-  recommendation?: {
-    top: string;
-    topColors?: string[];
-    bottom: string;
-    bottomColors?: string[];
-    outer: string;
-    outerColors?: string[];
-    shoes: string;
-    shoeColors?: string[];
-  };
+  recommendation?: Rec;
   size?: number;
 }
 
-export default function AvatarSVG({ profile, recommendation, size = 200 }: AvatarProps) {
+export default function AvatarSVG({ profile, recommendation, size = 260 }: AvatarProps) {
   const bmi      = getBMI(profile.height, profile.weight);
   const bodyType = getBodyType(bmi);
-  const widths   = bodyWidths(bodyType);
-  const skinColor = '#F4C089';
+  const w        = bodyWidths(bodyType);
 
-  // 몸통 좌표 (cx=100 기준)
-  const cx   = 100;
-  const shoulderY = 108;
-  const waistY    = 210;
-  const hipY      = 235;
-  const kneeY     = 305;
-  const ankleY    = 360;
+  const cx  = 100;
+  const headY = 62;       // 얼굴 중심 Y
 
-  const sw = widths.shoulder / 2; // half shoulder width
-  const ww = widths.waist    / 2;
-  const hw = widths.hip      / 2;
+  // 신체 좌표
+  const shoulderY = 116;
+  const waistY    = 218;
+  const hipY      = 244;
+  const kneeY     = 312;
+  const ankleY    = 372;
 
-  // 상의 몸통 path
-  const torsoPath = `M${cx - sw},${shoulderY} L${cx + sw},${shoulderY} L${cx + ww},${waistY} L${cx - ww},${waistY} Z`;
+  // 색상 파싱
+  const topC    = hex(recommendation?.topColors?.[0]    ?? '연그레이');
+  const bottomC = hex(recommendation?.bottomColors?.[0] ?? '블루데님');
+  const hasOuter = recommendation?.outer && !recommendation.outer.includes('불필요');
+  const outerC  = hasOuter ? hex(recommendation!.outerColors?.[0] ?? '차콜') : null;
+  const shoeC   = hex(recommendation?.shoeColors?.[0]  ?? '블랙');
 
-  // 하의 path (두 다리)
-  const hipPath   = `M${cx - ww},${waistY} L${cx + ww},${waistY} L${cx + hw},${hipY} L${cx - hw},${hipY} Z`;
-  const legW      = hw * 0.88;
-  const gapW      = hw * 0.12;
-  const leftLeg   = `M${cx - hw},${hipY} L${cx - gapW},${hipY} L${cx - gapW},${ankleY} L${cx - hw},${ankleY} Z`;
-  const rightLeg  = `M${cx + gapW},${hipY} L${cx + hw},${hipY}  L${cx + hw},${ankleY}  L${cx + gapW},${ankleY} Z`;
+  // 소매 / 바지 길이
+  const isShortSleeve = (recommendation?.top ?? '').match(/반소매|민소매|반팔|탱크/);
+  const isShorts      = (recommendation?.bottom ?? '').match(/반바지|쇼츠|숏/);
+  const sleeveEnd     = isShortSleeve ? shoulderY + 30 : shoulderY + 80;
+  const legEnd        = isShorts      ? kneeY           : ankleY;
 
-  // 팔 path
-  const armLen    = 80;
-  const armW      = bodyType === 'full' ? 13 : 11;
-  const leftArm   = `M${cx - sw},${shoulderY} L${cx - sw - armW},${shoulderY} L${cx - sw - armW + 6},${shoulderY + armLen} L${cx - sw + 6},${shoulderY + armLen} Z`;
-  const rightArm  = `M${cx + sw},${shoulderY} L${cx + sw + armW},${shoulderY} L${cx + sw + armW - 6},${shoulderY + armLen} L${cx + sw - 6},${shoulderY + armLen} Z`;
+  const sw = w.sh / 2;
+  const ww = w.wa / 2;
+  const hw = w.hi / 2;
+  const aw = w.armW;
+  const gap = 4; // 다리 사이 간격
 
-  // 소매 길이 (반소매 vs 긴소매)
-  const topText  = recommendation?.top ?? '';
-  const isShortSleeve = topText.includes('반소매') || topText.includes('민소매') || topText.includes('반팔');
-  const sleeveEnd     = isShortSleeve ? shoulderY + 32 : shoulderY + armLen;
-  const leftSleeve    = `M${cx - sw},${shoulderY} L${cx - sw - armW},${shoulderY} L${cx - sw - armW + 6},${sleeveEnd} L${cx - sw + 6},${sleeveEnd} Z`;
-  const rightSleeve   = `M${cx + sw},${shoulderY} L${cx + sw + armW},${shoulderY} L${cx + sw + armW - 6},${sleeveEnd} L${cx + sw - 6},${sleeveEnd} Z`;
-
-  // 하의 길이 (반바지 vs 긴바지)
-  const bottomText = recommendation?.bottom ?? '';
-  const isShorts   = bottomText.includes('반바지') || bottomText.includes('쇼츠');
-  const legEnd     = isShorts ? kneeY : ankleY;
-  const leftLegC   = `M${cx - hw},${hipY} L${cx - gapW},${hipY} L${cx - gapW},${legEnd} L${cx - hw},${legEnd} Z`;
-  const rightLegC  = `M${cx + gapW},${hipY} L${cx + hw},${hipY}  L${cx + hw},${legEnd}  L${cx + gapW},${legEnd} Z`;
-
-  // 겉옷 (jacket) - 상의보다 살짝 넓음
-  const jw        = sw + 8;
-  const jacketPath  = `M${cx - jw},${shoulderY - 4} L${cx + jw},${shoulderY - 4} L${cx + ww + 5},${waistY + 10} L${cx - ww - 5},${waistY + 10} Z`;
-  const lapelLeft   = `M${cx - jw},${shoulderY - 4} L${cx - 8},${shoulderY + 40} L${cx - 8},${waistY + 10} L${cx - ww - 5},${waistY + 10} Z`;
-  const lapelRight  = `M${cx + jw},${shoulderY - 4} L${cx + 8},${shoulderY + 40} L${cx + 8},${waistY + 10} L${cx + ww + 5},${waistY + 10} Z`;
-
-  const colors  = recommendation ? parseOutfitColors(recommendation) : null;
-  const topC    = colors?.top    ?? '#D1D5DB';
-  const bottomC = colors?.bottom ?? '#4682B4';
-  const outerC  = colors?.outer;
-  const shoeC   = colors?.shoes  ?? '#2C2C2E';
-
-  // 신발 너비/높이
-  const shoeH = 18;
-  const shoeW = hw - gapW + 4;
+  const skinBase   = '#FADA9E';
+  const skinShadow = '#D4A860';
 
   return (
     <svg
-      viewBox="0 0 200 400"
+      viewBox="0 0 200 420"
       width={size}
-      height={size * 2}
+      height={size * 2.1}
       xmlns="http://www.w3.org/2000/svg"
       style={{ display: 'block' }}
     >
-      {/* 배경 원형 그라데이션 */}
       <defs>
-        <radialGradient id="bgGrad" cx="50%" cy="60%" r="50%">
-          <stop offset="0%"   stopColor="#f0f4ff" />
-          <stop offset="100%" stopColor="#e8edf8" />
+        {/* 피부 그라데이션 */}
+        <linearGradient id="skinArm" x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0%"   stopColor={skinShadow} />
+          <stop offset="40%"  stopColor={skinBase} />
+          <stop offset="100%" stopColor={skinShadow} />
+        </linearGradient>
+        {/* 의류 그라데이션 */}
+        <ClothingGrad id="topGrad"    baseColor={topC} />
+        <ClothingGrad id="outerGrad"  baseColor={outerC ?? '#444'} />
+        <LegGrad id="leftLegGrad"  baseColor={bottomC} side="left" />
+        <LegGrad id="rightLegGrad" baseColor={bottomC} side="right" />
+        {/* 바닥 그림자 */}
+        <radialGradient id="shadow" cx="50%" cy="50%" r="50%">
+          <stop offset="0%"   stopColor="#00000030" />
+          <stop offset="100%" stopColor="#00000000" />
         </radialGradient>
       </defs>
-      <ellipse cx="100" cy="370" rx="70" ry="12" fill="#00000010" />
 
-      {/* 피부: 팔/목 */}
-      <path d={leftArm}  fill={skinColor} />
-      <path d={rightArm} fill={skinColor} />
-      <rect x="91" y="105" width="18" height="20" fill={skinColor} />
+      {/* 바닥 그림자 */}
+      <ellipse cx={cx} cy={ankleY+22} rx={52} ry={10} fill="url(#shadow)" />
 
-      {/* ── 하의 ── */}
-      <path d={hipPath}   fill={bottomC} />
-      <path d={leftLegC}  fill={bottomC} />
-      <path d={rightLegC} fill={bottomC} />
-      {/* 하의 주름선 */}
-      {!isShorts && (
-        <>
-          <line x1={cx - gapW - 1} y1={hipY} x2={cx - gapW - 5} y2={legEnd - 10} stroke="rgba(0,0,0,0.08)" strokeWidth="1.5" />
-          <line x1={cx + gapW + 1} y1={hipY} x2={cx + gapW + 5} y2={legEnd - 10} stroke="rgba(0,0,0,0.08)" strokeWidth="1.5" />
-        </>
-      )}
+      {/* ─── 피부: 팔 ─────────────────────────────────────────────────── */}
+      {/* 왼팔 */}
+      <path
+        d={`M${cx-sw},${shoulderY} L${cx-sw-aw},${shoulderY+4} L${cx-sw-aw+4},${shoulderY+82} L${cx-sw+6},${shoulderY+78} Z`}
+        fill="url(#skinArm)"
+      />
+      {/* 오른팔 */}
+      <path
+        d={`M${cx+sw},${shoulderY} L${cx+sw+aw},${shoulderY+4} L${cx+sw+aw-4},${shoulderY+82} L${cx+sw-6},${shoulderY+78} Z`}
+        fill="url(#skinArm)"
+      />
 
-      {/* ── 상의 소매 ── */}
-      <path d={leftSleeve}  fill={topC} />
-      <path d={rightSleeve} fill={topC} />
+      {/* ─── 하의 ───────────────────────────────────────────────────────── */}
+      {/* 허리 연결 */}
+      <path d={`M${cx-ww},${waistY} L${cx+ww},${waistY} L${cx+hw},${hipY} L${cx-hw},${hipY} Z`}
+        fill={`url(#leftLegGrad)`} />
+      {/* 왼쪽 다리 */}
+      <path d={`M${cx-hw},${hipY} L${cx-gap},${hipY} L${cx-gap},${legEnd} L${cx-hw},${legEnd} Z`}
+        fill="url(#leftLegGrad)" />
+      {/* 오른쪽 다리 */}
+      <path d={`M${cx+gap},${hipY} L${cx+hw},${hipY} L${cx+hw},${legEnd} L${cx+gap},${legEnd} Z`}
+        fill="url(#rightLegGrad)" />
+      {/* 다리 사이 어두운 선 */}
+      <rect x={cx-gap} y={hipY} width={gap*2} height={legEnd-hipY} fill={darken(bottomC,50)} />
+      {/* 하의 주름 */}
+      {!isShorts && (<>
+        <line x1={cx-hw+8}  y1={hipY+10} x2={cx-hw+4}  y2={legEnd-20} stroke={darken(bottomC,20)} strokeWidth="1" opacity="0.5" />
+        <line x1={cx+hw-8}  y1={hipY+10} x2={cx+hw-4}  y2={legEnd-20} stroke={darken(bottomC,20)} strokeWidth="1" opacity="0.5" />
+      </>)}
+      {/* 벨트 */}
+      <rect x={cx-ww} y={waistY-4} width={ww*2} height={8} rx={3} fill={darken(bottomC,45)} />
+      <rect x={cx-4}  y={waistY-5} width={8} height={10} rx={2} fill={darken(bottomC,20)} />
 
-      {/* ── 상의 몸통 ── */}
-      <path d={torsoPath} fill={topC} />
-      {/* 상의 라인 */}
-      <line x1={cx} y1={shoulderY + 10} x2={cx} y2={waistY - 5} stroke="rgba(0,0,0,0.06)" strokeWidth="1" />
+      {/* ─── 상의 소매 ─────────────────────────────────────────────────── */}
+      {/* 왼쪽 소매 */}
+      <path
+        d={`M${cx-sw+2},${shoulderY} L${cx-sw-aw+2},${shoulderY+4} L${cx-sw-aw+6},${sleeveEnd} L${cx-sw+4},${sleeveEnd-2} Z`}
+        fill={`url(#topGrad)`}
+      />
+      {/* 오른쪽 소매 */}
+      <path
+        d={`M${cx+sw-2},${shoulderY} L${cx+sw+aw-2},${shoulderY+4} L${cx+sw+aw-6},${sleeveEnd} L${cx+sw-4},${sleeveEnd-2} Z`}
+        fill={`url(#topGrad)`}
+      />
+      {/* 소매 끝단 */}
+      <rect x={cx-sw-aw+2} y={sleeveEnd-3} width={aw+sw/3} height={5} rx={2} fill={darken(topC,30)} />
+      <rect x={cx+sw-sw/3-2} y={sleeveEnd-3} width={aw+sw/3} height={5} rx={2} fill={darken(topC,30)} />
 
-      {/* ── 겉옷 레이어 ── */}
+      {/* ─── 상의 몸통 ─────────────────────────────────────────────────── */}
+      <path
+        d={`M${cx-sw},${shoulderY} L${cx+sw},${shoulderY} L${cx+ww},${waistY} L${cx-ww},${waistY} Z`}
+        fill={`url(#topGrad)`}
+      />
+      {/* 상의 세로 주름 */}
+      <line x1={cx} y1={shoulderY+14} x2={cx} y2={waistY-8} stroke={darken(topC,18)} strokeWidth="1" opacity="0.4" />
+      {/* 상의 어깨선 */}
+      <line x1={cx-sw} y1={shoulderY} x2={cx+sw} y2={shoulderY} stroke={darken(topC,25)} strokeWidth="1.5" opacity="0.5" />
+
+      {/* ─── 겉옷 ───────────────────────────────────────────────────────── */}
       {outerC && (
-        <g opacity="0.88">
-          <path d={jacketPath} fill={outerC} />
-          {/* 라펠 (옷깃) */}
-          <path d={lapelLeft}  fill={topC} opacity="0.9" />
-          <path d={lapelRight} fill={topC} opacity="0.9" />
-          {/* 겉옷 소매 (상의보다 살짝 넓게) */}
-          <path d={`M${cx - sw - 2},${shoulderY - 2} L${cx - sw - armW - 3},${shoulderY - 2} L${cx - sw - armW + 3},${sleeveEnd + 4} L${cx - sw + 3},${sleeveEnd + 4} Z`}
-            fill={outerC} />
-          <path d={`M${cx + sw + 2},${shoulderY - 2} L${cx + sw + armW + 3},${shoulderY - 2} L${cx + sw + armW - 3},${sleeveEnd + 4} L${cx + sw - 3},${sleeveEnd + 4} Z`}
-            fill={outerC} />
+        <g>
+          {/* 겉옷 소매 */}
+          <path
+            d={`M${cx-sw-2},${shoulderY-2} L${cx-sw-aw-4},${shoulderY+2} L${cx-sw-aw},${sleeveEnd+6} L${cx-sw+2},${sleeveEnd+4} Z`}
+            fill={`url(#outerGrad)`} opacity="0.92"
+          />
+          <path
+            d={`M${cx+sw+2},${shoulderY-2} L${cx+sw+aw+4},${shoulderY+2} L${cx+sw+aw},${sleeveEnd+6} L${cx+sw-2},${sleeveEnd+4} Z`}
+            fill={`url(#outerGrad)`} opacity="0.92"
+          />
+          {/* 겉옷 몸통 */}
+          <path
+            d={`M${cx-sw-2},${shoulderY-2} L${cx+sw+2},${shoulderY-2} L${cx+ww+6},${waistY+12} L${cx-ww-6},${waistY+12} Z`}
+            fill={`url(#outerGrad)`} opacity="0.92"
+          />
+          {/* 라펠 (안쪽 상의 색 보임) */}
+          <path d={`M${cx-sw-2},${shoulderY-2} L${cx-6},${shoulderY+46} L${cx-6},${waistY+12} L${cx-ww-6},${waistY+12} Z`}
+            fill={topC} opacity="0.88" />
+          <path d={`M${cx+sw+2},${shoulderY-2} L${cx+6},${shoulderY+46} L${cx+6},${waistY+12} L${cx+ww+6},${waistY+12} Z`}
+            fill={topC} opacity="0.88" />
+          {/* 깃(collar) */}
+          <path d={`M${cx-sw-2},${shoulderY-2} Q${cx},${shoulderY+8} ${cx+sw+2},${shoulderY-2}`}
+            fill={darken(outerC,30)} opacity="0.7" />
           {/* 단추 */}
-          {[130, 155, 180].map((y, i) => (
-            <circle key={i} cx={cx} cy={y} r="3" fill="rgba(0,0,0,0.25)" />
+          {[130,152,174].map((y,i) => (
+            <circle key={i} cx={cx} cy={y} r={3.5} fill={darken(outerC,50)} />
           ))}
         </g>
       )}
 
-      {/* ── 신발 ── */}
-      {/* 왼쪽 신발 */}
-      <rect x={cx - hw - 2} y={legEnd} width={shoeW + 4} height={shoeH} rx="6" fill={shoeC} />
-      <rect x={cx - hw - 6} y={legEnd + 4} width={shoeW + 8} height={shoeH - 4} rx="5" fill={shoeC} />
-      {/* 오른쪽 신발 */}
-      <rect x={cx + gapW - 2} y={legEnd} width={shoeW + 4} height={shoeH} rx="6" fill={shoeC} />
-      <rect x={cx + gapW - 2} y={legEnd + 4} width={shoeW + 8} height={shoeH - 4} rx="5" fill={shoeC} />
-      {/* 신발 밑창 */}
-      <rect x={cx - hw - 7} y={legEnd + shoeH - 2} width={shoeW + 10} height="4" rx="2" fill={shoeC} opacity="0.5" />
-      <rect x={cx + gapW - 3} y={legEnd + shoeH - 2} width={shoeW + 10} height="4" rx="2" fill={shoeC} opacity="0.5" />
-
-      {/* ── 손 ── */}
-      <ellipse cx={cx - sw - armW/2 + 3} cy={sleeveEnd + 10} rx="9" ry="10" fill={skinColor} />
-      <ellipse cx={cx + sw + armW/2 - 3} cy={sleeveEnd + 10} rx="9" ry="10" fill={skinColor} />
-
-      {/* ── 머리 ── */}
-      <Hair gender={profile.gender} skinColor={skinColor} />
-      <Face gender={profile.gender} />
-
-      {/* ── 넥라인 장식 ── */}
+      {/* ─── 넥라인 ─────────────────────────────────────────────────────── */}
       {!outerC && (
         <path
-          d={`M${cx - 18},${shoulderY + 2} Q${cx},${shoulderY + 22} ${cx + 18},${shoulderY + 2}`}
-          fill="none" stroke="rgba(0,0,0,0.08)" strokeWidth="1.5"
+          d={`M${cx-16},${shoulderY+3} Q${cx},${shoulderY+22} ${cx+16},${shoulderY+3}`}
+          stroke={darken(topC,28)} strokeWidth="1.5" fill="none" opacity="0.6"
         />
       )}
+
+      {/* ─── 신발 ───────────────────────────────────────────────────────── */}
+      {/* 왼쪽 신발 */}
+      <ellipse cx={cx-hw/2-gap/2} cy={legEnd+10} rx={hw/2+5} ry={11} fill={shoeC} />
+      <ellipse cx={cx-hw/2-gap/2-3} cy={legEnd+9} rx={hw/2+3} ry={8} fill={lighten(shoeC,25)} />
+      <rect x={cx-hw-2} y={legEnd+14} width={hw-gap+2} height={5} rx={3} fill={darken(shoeC,20)} />
+
+      {/* 오른쪽 신발 */}
+      <ellipse cx={cx+hw/2+gap/2} cy={legEnd+10} rx={hw/2+5} ry={11} fill={shoeC} />
+      <ellipse cx={cx+hw/2+gap/2+3} cy={legEnd+9} rx={hw/2+3} ry={8} fill={lighten(shoeC,25)} />
+      <rect x={cx+gap} y={legEnd+14} width={hw-gap+2} height={5} rx={3} fill={darken(shoeC,20)} />
+
+      {/* ─── 손 ─────────────────────────────────────────────────────────── */}
+      <ellipse cx={cx-sw-aw/2+3} cy={sleeveEnd+12} rx={9} ry={10} fill={skinBase} />
+      <ellipse cx={cx+sw+aw/2-3} cy={sleeveEnd+12} rx={9} ry={10} fill={skinBase} />
+      {/* 손 음영 */}
+      <ellipse cx={cx-sw-aw/2+3} cy={sleeveEnd+14} rx={7} ry={6} fill={skinShadow} opacity={0.2} />
+      <ellipse cx={cx+sw+aw/2-3} cy={sleeveEnd+14} rx={7} ry={6} fill={skinShadow} opacity={0.2} />
+
+      {/* ─── 얼굴 (맨 위) ──────────────────────────────────────────────── */}
+      <KoreanFace gender={profile.gender} cx={cx} headY={headY} />
     </svg>
   );
 }

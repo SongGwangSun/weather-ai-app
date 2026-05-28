@@ -79,9 +79,9 @@ export default function ProfileSetupModal({ initial, editMode = false, onSave, o
         <div className="p-6 space-y-5">
           {/* 미리보기 아바타 */}
           <div className="flex flex-col items-center gap-3">
-            <div className="bg-gradient-to-b from-violet-50 to-fuchsia-50 rounded-3xl p-4 border border-violet-100 w-36 h-52 flex items-center justify-center">
+            <div className="bg-gradient-to-b from-violet-50 to-fuchsia-50 rounded-3xl p-4 border border-violet-100 w-44 h-64 flex items-center justify-center">
               {previewProfile ? (
-                <AvatarSVG profile={previewProfile} size={110} />
+                <AvatarSVG profile={previewProfile} size={130} />
               ) : (
                 <div className="text-5xl opacity-30">🧍</div>
               )}

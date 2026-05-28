@@ -230,9 +230,6 @@ export default function HomePage() {
     setDeferredPrompt(null);
   };
 
-  const maxProfiles = session?.user?.plan === 'paid'
-    ? PLAN_LIMITS.paid.maxProfiles : PLAN_LIMITS.free.maxProfiles;
-
   return (
     <main className="min-h-screen bg-gradient-to-b from-slate-100 to-slate-200">
       {/* ── 헤더 ── */}
@@ -403,11 +400,11 @@ export default function HomePage() {
                     {(outfit || outfitLoading) && (
                       <div className="flex gap-4 mb-5">
                         {/* 아바타 */}
-                        <div className="flex-shrink-0 bg-gradient-to-b from-violet-50 to-fuchsia-50 rounded-2xl p-3 border border-violet-100 flex items-center justify-center w-28">
+                        <div className="flex-shrink-0 bg-gradient-to-b from-violet-50 to-fuchsia-50 rounded-2xl p-3 border border-violet-100 flex items-center justify-center w-36">
                           {outfit ? (
-                            <AvatarSVG profile={profile} recommendation={outfit.recommendation} size={90} />
+                            <AvatarSVG profile={profile} recommendation={outfit.recommendation} size={120} />
                           ) : (
-                            <div className="w-20 h-40 bg-gray-100 rounded-xl animate-pulse" />
+                            <div className="w-28 h-56 bg-gray-100 rounded-xl animate-pulse" />
                           )}
                         </div>
                         {/* 간략 추천 */}
