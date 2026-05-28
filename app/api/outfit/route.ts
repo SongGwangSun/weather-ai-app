@@ -29,7 +29,7 @@ function genderText(gender: string | null): string {
 }
 
 const JSON_SCHEMA = `{
-  "summary": "한 줄 날씨 코멘트 (이모지 포함, 예: ☀️ 화창한 봄날씨!)",
+  "summary": "한 줄 날씨+장소 코멘트 (이모지 포함, 예: ☀️ 데이트하기 딱 좋은 날씨!)",
   "top": "상의 종류만 (색상 제외, 예: 반소매 티셔츠)",
   "topColors": ["추천 색상1", "추천 색상2"],
   "bottom": "하의 종류만 (색상 제외)",
@@ -40,8 +40,8 @@ const JSON_SCHEMA = `{
   "shoeColors": ["추천 색상1", "추천 색상2"],
   "colorStory": "전체 코디 컬러 조합 한 줄 설명",
   "accessories": ["액세서리1", "액세서리2"],
-  "tips": ["외출 팁1", "외출 팁2"],
-  "warning": "주의사항 또는 null
+  "tips": ["장소/기분/스타일에 맞는 실용적 팁1", "팁2"],
+  "warning": "주의사항 또는 null"
 }`;
 
 export async function POST(request: NextRequest) {
@@ -84,15 +84,22 @@ export async function POST(request: NextRequest) {
   const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
   try {
-    const { current, location, age, gender } = body;
+    const { current, location, age, gender, height, weight, place, mood, style } = body;
     const personInfo = [genderText(gender), ageGroup(age)].filter(Boolean).join(' ');
+    const bmi = (height && weight) ? (weight as number) / Math.pow((height as number) / 100, 2) : null;
+    const bodyTypeText = bmi ? (bmi < 18.5 ? '슬림 체형' : bmi < 25 ? '보통 체형' : '풍성 체형') : '';
 
-    const systemPrompt = `당신은 한국의 패션 스타일리스트입니다. 날씨와 착용자 정보를 받아 외출 옷차림을 추천합니다.
-- 나이·성별에 맞는 현실적인 한국 패션 트렌드를 반영하세요
-- 색상은 코디 전체의 조화를 고려해 2가지씩 추천하세요 (한국어 색상명 사용)
+    const systemPrompt = `당신은 한국의 최고 패션 스타일리스트입니다. 날씨, 착용자 신체 정보, 방문 장소, 기분, 원하는 스타일을 종합하여 최적의 외출 코디를 추천합니다.
+- 나이·성별·체형에 맞는 현실적인 한국 패션 트렌드를 반영하세요
+- 방문 장소와 기분에 어울리는 스타일을 우선시하세요
+- 색상은 코디 전체 조화를 고려해 2가지씩 추천하세요 (한국어 색상명 사용)
+- 구체적이고 실용적인 조언을 제공하세요
 - 반드시 JSON 형식으로만 응답하세요`;
 
-    const userPrompt = `착용자: ${personInfo || '정보 없음'}
+    const userPrompt = `착용자: ${personInfo || '정보 없음'}${bodyTypeText ? ` (${bodyTypeText})` : ''}
+방문 장소: ${(place as string) || '미정'}
+오늘 기분: ${(mood as string) || '평범'}
+원하는 스타일: ${(style as string) || '캐주얼'}
 위치: ${location.city} ${location.district}
 기온: ${current.temperature}°C (체감 ${current.apparentTemperature}°C)
 날씨: ${current.label} ${current.emoji}
