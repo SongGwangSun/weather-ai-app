@@ -4,6 +4,11 @@ import { supabase } from './supabase';
 import { getEffectivePlan } from './plans';
 import type { Plan } from './plans';
 
+// Vercel 환경에서 NEXTAUTH_URL이 없으면 VERCEL_URL로 자동 설정
+if (process.env.VERCEL_URL && !process.env.NEXTAUTH_URL) {
+  process.env.NEXTAUTH_URL = `https://${process.env.VERCEL_URL}`;
+}
+
 export const authOptions: NextAuthOptions = {
   providers: [
     GoogleProvider({
